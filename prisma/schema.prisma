@@ -69,6 +69,7 @@ model User {
   wellbeingUpdates    WellbeingUpdate[] @relation("WellbeingUpdateCreatedBy")
   staffProfile        StaffProfile?
   professionalAccessesGranted ProfessionalAccess[] @relation("ProfAccessGrantedBy")
+  medicationAdministrations   MedicationAdministration[] @relation("MedAdminBy")
 
   @@index([organisationId])
 }
@@ -728,6 +729,8 @@ model Medication {
 
   currentStock    Int      @default(0)
   reorderLevel    Int      @default(7)        // days supply alert
+  batchNumber     String?
+  expiryDate      DateTime?
 
   notes           String?
   deletedAt       DateTime?
@@ -769,6 +772,7 @@ model MedicationAdministration {
   createdAt       DateTime @default(now())
 
   medication      Medication @relation(fields: [medicationId], references: [id])
+  administeredBy  User       @relation("MedAdminBy", fields: [administeredById], references: [id])
 
   @@index([medicationId])
   @@index([residentId])

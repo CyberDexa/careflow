@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Pill, Shield, PackageX, FlaskConical, Link } from 'lucide-react'
 import { startOfMonth } from 'date-fns'
 import NextLink from 'next/link'
+import { format } from 'date-fns'
 
 export async function generateMetadata({ params }: { params: Promise<{ residentId: string }> }) {
   const { residentId } = await params
@@ -34,7 +35,7 @@ export default async function EmarResidentPage({
   const [resident, staff] = await Promise.all([
     prisma.resident.findFirst({
       where: { id: residentId, organisationId: user.organisationId, deletedAt: null },
-      select: { id: true, firstName: true, lastName: true, roomNumber: true, status: true },
+      select: { id: true, firstName: true, lastName: true, roomNumber: true, status: true, dateOfBirth: true },
     }),
     prisma.user.findMany({
       where: { organisationId: user.organisationId, isActive: true },
@@ -63,19 +64,29 @@ export default async function EmarResidentPage({
         <div>
           <div className="flex items-center gap-2">
             <Pill className="h-5 w-5 text-primary" />
-            <h1 className="text-2xl font-bold">eMAR</h1>
+            <h1 className="text-2xl font-bold">Medication Administration Record (MAR)</h1>
           </div>
           <p className="text-muted-foreground mt-1">
-            {resident.firstName} {resident.lastName} · Room {resident.roomNumber}
+            {resident.firstName} {resident.lastName}
+            {resident.dateOfBirth && (
+              <span className="ml-2 text-xs">DOB: {format(new Date(resident.dateOfBirth), 'dd/MM/yyyy')}</span>
+            )}
           </p>
         </div>
-        {prnMeds.length > 0 && (
-          <NextLink href={`/emar/${residentId}/prn-protocols`}>
+        <div className="flex items-center gap-2">
+          {prnMeds.length > 0 && (
+            <NextLink href={`/emar/${residentId}/prn-protocols`}>
+              <Button variant="outline" size="sm">
+                <FlaskConical className="h-4 w-4 mr-1" />PRN Protocols
+              </Button>
+            </NextLink>
+          )}
+          <NextLink href={`/medications/${residentId}`}>
             <Button variant="outline" size="sm">
-              <FlaskConical className="h-4 w-4 mr-1" />PRN Protocols
+              <Pill className="h-4 w-4 mr-1" />Medications
             </Button>
           </NextLink>
-        )}
+        </div>
       </div>
 
       {/* Stat cards */}
@@ -107,12 +118,12 @@ export default async function EmarResidentPage({
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="medications">
+      <Tabs defaultValue="mar">
         <TabsList>
-          <TabsTrigger value="medications">Medications</TabsTrigger>
           <TabsTrigger value="mar">MAR Chart</TabsTrigger>
+          <TabsTrigger value="medications">UK Stock</TabsTrigger>
           {controlledMeds.length > 0 && (
-            <TabsTrigger value="cd-register">CD Register</TabsTrigger>
+            <TabsTrigger value="cd-register">Controlled Drugs</TabsTrigger>
           )}
         </TabsList>
 
@@ -136,8 +147,7 @@ export default async function EmarResidentPage({
               scheduledTimes: m.scheduledTimes as string[],
               isControlled: m.isControlled,
               isPRN: m.isPRN,
-              frequency: m.frequency,
-            }))}
+              frequency: m.frequency,              currentStock: (m as any).currentStock ?? 0,            }))}
             administrations={marData.administrations.map((a) => ({
               id: a.id,
               medicationId: a.medicationId,
