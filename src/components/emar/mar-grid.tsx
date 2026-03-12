@@ -111,9 +111,11 @@ function MARCell({
   const cfg = code ? MAR_CODES[code] : null
   const legacyGiven = !cfg && admin?.status === 'GIVEN'
   const legacyRefused = !cfg && admin?.status === 'REFUSED'
-  const adminTime = admin?.administeredAt
-    ? format(new Date(admin.administeredAt as string), 'HH:mm')
-    : null
+  const initials = admin?.administeredBy
+    ? `${admin.administeredBy.firstName[0]}${admin.administeredBy.lastName[0]}`.toUpperCase()
+    : admin?.administeredAt
+      ? format(new Date(admin.administeredAt as string), 'HH:mm')
+      : null
 
   let cellClass = ''
   let content: React.ReactNode = ''
@@ -125,7 +127,7 @@ function MARCell({
     content = (
       <>
         <span className="text-[11px] font-bold leading-none">{code ?? (legacyGiven ? 'G' : 'R')}</span>
-        {adminTime && <span className="text-[9px] leading-none opacity-80">{adminTime}</span>}
+        {initials && <span className="text-[9px] leading-none opacity-80">{initials}</span>}
       </>
     )
   } else if (isFuture) {

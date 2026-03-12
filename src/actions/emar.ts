@@ -297,6 +297,14 @@ export async function recordAdministration(data: z.infer<typeof administrationSc
     },
   })
 
+  // Decrement stock on every successful administration
+  if (validated.status === 'GIVEN' && medication.currentStock > 0) {
+    await prisma.medication.update({
+      where: { id: medication.id },
+      data: { currentStock: { decrement: 1 } },
+    })
+  }
+
   // Update controlled drug register
   if (medication.isControlled && validated.status === 'GIVEN' && validated.witnessId) {
     const lastEntry = await prisma.controlledDrugRegister.findFirst({
