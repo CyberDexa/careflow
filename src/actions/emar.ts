@@ -228,6 +228,9 @@ export async function getMARGridData(residentId: string, month: Date) {
         organisationId: user.organisationId,
         scheduledTime: { gte: start, lte: end },
       },
+      include: {
+        administeredBy: { select: { firstName: true, lastName: true } },
+      },
       orderBy: { scheduledTime: 'asc' },
     }),
   ])
