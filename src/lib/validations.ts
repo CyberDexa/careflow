@@ -15,6 +15,15 @@ export const registerSchema = z.object({
   regulatoryBody: z.enum(["CQC", "CARE_INSPECTORATE", "CSSIW", "RQIA"]).default("CQC"),
 })
 
+export const registerClientSchema = registerSchema.extend({
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+})
+
+export type RegisterClientInput = z.infer<typeof registerClientSchema>
+
 // ─── Resident ───────────────────────────────────────────────────
 export const residentPersonalSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
