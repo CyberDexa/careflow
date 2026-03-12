@@ -1,0 +1,256 @@
+@import "tailwindcss";
+
+/* ─── CareFlow Premium Dark Design System ─── */
+:root {
+  /* Core palette — deep slate + vibrant accents */
+  --background: 222 47% 5%;
+  --foreground: 210 40% 96%;
+
+  --card: 222 35% 8%;
+  --card-foreground: 210 40% 96%;
+
+  --popover: 222 35% 10%;
+  --popover-foreground: 210 40% 96%;
+
+  /* Primary: vivid cyan-teal — trust + energy */
+  --primary: 172 66% 50%;
+  --primary-foreground: 222 47% 5%;
+
+  /* Secondary: muted slate */
+  --secondary: 217 33% 14%;
+  --secondary-foreground: 210 40% 80%;
+
+  --muted: 217 33% 12%;
+  --muted-foreground: 215 20% 55%;
+
+  /* Accent: soft blue glow */
+  --accent: 217 33% 16%;
+  --accent-foreground: 210 40% 90%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 217 33% 14%;
+  --input: 217 33% 16%;
+  --ring: 172 66% 50%;
+
+  --radius: 0.75rem;
+
+  /* Risk colours – vibrant on dark */
+  --risk-low: 142 71% 45%;
+  --risk-medium: 38 92% 50%;
+  --risk-high: 24 95% 53%;
+  --risk-critical: 0 72% 51%;
+
+  /* Status colours – vibrant on dark */
+  --status-enquiry: 215 90% 60%;
+  --status-pre-assessed: 38 92% 50%;
+  --status-admitted: 142 71% 45%;
+  --status-discharged: 220 10% 55%;
+
+  /* Accent gradients for stat cards */
+  --gradient-cyan: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);
+  --gradient-violet: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  --gradient-amber: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  --gradient-rose: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%);
+  --gradient-emerald: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+
+  /* Glassmorphism tokens */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 16px;
+  --glass-highlight: rgba(255, 255, 255, 0.06);
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus ring — WCAG 2.1 AA */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ─── Glassmorphism utility classes ─── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Gradient stat cards ─── */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  transition: opacity 0.3s ease;
+}
+
+.stat-card:hover::before {
+  opacity: 0.14;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card-cyan::before { background: var(--gradient-cyan); }
+.stat-card-violet::before { background: var(--gradient-violet); }
+.stat-card-amber::before { background: var(--gradient-amber); }
+.stat-card-rose::before { background: var(--gradient-rose); }
+.stat-card-emerald::before { background: var(--gradient-emerald); }
+.stat-card-blue::before { background: var(--gradient-blue); }
+
+/* ─── Animated gradient orbs (background decoration) ─── */
+.gradient-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+  animation: orb-float 20s ease-in-out infinite;
+}
+
+.gradient-orb-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, #06b6d4, transparent 70%);
+  top: -200px;
+  right: -100px;
+}
+
+.gradient-orb-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #8b5cf6, transparent 70%);
+  bottom: -150px;
+  left: -100px;
+  animation-delay: -7s;
+}
+
+.gradient-orb-3 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #f43f5e, transparent 70%);
+  top: 40%;
+  left: 50%;
+  animation-delay: -14s;
+}
+
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+/* ─── Sidebar glow effect ─── */
+.sidebar-glow {
+  background: linear-gradient(180deg, hsl(222 47% 7%) 0%, hsl(222 47% 5%) 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Smooth page transitions ─── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fade-in-up 0.4s ease-out;
+}
+
+/* Risk level utility classes */
+.risk-low    { color: hsl(var(--risk-low)); }
+.risk-medium { color: hsl(var(--risk-medium)); }
+.risk-high   { color: hsl(var(--risk-high)); }
+.risk-critical { color: hsl(var(--risk-critical)); }
+
+.risk-bg-low      { background-color: hsl(142 71% 45% / 0.12); color: hsl(142 71% 65%); }
+.risk-bg-medium   { background-color: hsl(38 92% 50% / 0.12); color: hsl(38 92% 70%); }
+.risk-bg-high     { background-color: hsl(24 95% 53% / 0.12); color: hsl(24 95% 70%); }
+.risk-bg-critical { background-color: hsl(0 72% 51% / 0.12); color: hsl(0 72% 70%); }
+
+/* Print optimisations for care plans / assessments */
+@media print {
+  .no-print { display: none !important; }
+
+  nav, header, aside,
+  [data-sidebar], [data-header], [data-mobile-nav] {
+    display: none !important;
+  }
+
+  body { font-size: 11pt; color: #000; background: #fff; }
+  main { padding: 0 !important; margin: 0 !important; }
+  .flex.min-h-screen { display: block !important; }
+  .lg\:ml-64 { margin: 0 !important; }
+
+  /* Cards and borders look clean on paper */
+  .card, [class*="rounded"] { border: 1px solid #ccc !important; box-shadow: none !important; }
+  a { text-decoration: none; color: inherit; }
+
+  .print-break-before { page-break-before: always; }
+
+  /* Print header: force black text */
+  h1, h2, h3, h4 { color: #000 !important; }
+}

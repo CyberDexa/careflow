@@ -1,0 +1,1453 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// MULTI-TENANCY
+// ─────────────────────────────────────────────
+
+model Organisation {
+  id              String   @id @default(cuid())
+  name            String
+  type            String   @default("CARE_HOME")
+  registrationNo  String?
+  address         String?
+  phone           String?
+  email           String?
+  regulatoryBody  RegulatoryBody @default(CQC)
+  logoUrl         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  users           User[]
+  residents       Resident[]
+  careNotes       CareNote[]
+  handoverReports HandoverReport[]
+  incidents       Incident[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+  pharmacies      Pharmacy[]
+  prescriptionOrders PrescriptionOrder[]
+  groupMemberships   GroupMembership[]
+}
+
+// ─────────────────────────────────────────────
+// USERS & AUTH
+// ─────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  organisationId String
+  email          String   @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  role           UserRole @default(CARE_STAFF)
+  jobTitle       String?
+  phone          String?
+  avatarUrl      String?
+  isActive       Boolean  @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation        Organisation  @relation(fields: [organisationId], references: [id])
+  careNotes           CareNote[]
+  handoverReports     HandoverReport[]
+  incidents           Incident[]
+  incidentFollowUps   IncidentFollowUp[]
+  bodyMapEntries      BodyMapEntry[]
+  auditLogs           AuditLog[]
+  careplanApprovals   CarePlan[]    @relation("CarePlanApprovedBy")
+  assessmentDomains   AssessmentDomain[]
+  familyMessages      FamilyMessage[] @relation("FamilyMessageFromStaff")
+  wellbeingUpdates    WellbeingUpdate[] @relation("WellbeingUpdateCreatedBy")
+  staffProfile        StaffProfile?
+  professionalAccessesGranted ProfessionalAccess[] @relation("ProfAccessGrantedBy")
+
+  @@index([organisationId])
+}
+
+// ─────────────────────────────────────────────
+// RESIDENTS
+// ─────────────────────────────────────────────
+
+model Resident {
+  id              String         @id @default(cuid())
+  organisationId  String
+  status          ResidentStatus @default(ENQUIRY)
+  roomNumber      String?
+  nhsNumber       String?
+
+  // Personal
+  firstName       String
+  lastName        String
+  preferredName   String?
+  dateOfBirth     DateTime?
+  gender          String?
+  pronouns        String?
+  nationality     String?
+  religion        String?
+  ethnicity       String?
+  language        String?
+  interpreterNeeded Boolean @default(false)
+
+  // Admission
+  admissionDate   DateTime?
+  expectedStayType String?
+  fundingType     String?
+  referralSource  String?
+
+  // Medical
+  gpName          String?
+  gpPractice      String?
+  gpPhone         String?
+  gpAddress       String?
+  nhsLocalTeam    String?
+
+  // Key flags
+  dnacprInPlace   Boolean  @default(false)
+  dnacprDate      DateTime?
+  mentalCapacity  Boolean  @default(true)
+  doLsAuthorised  Boolean  @default(false)
+
+  photoUrl        String?
+  notes           String?
+
+  preAssessmentCompletedAt          DateTime?
+  admissionAssessmentApprovedAt     DateTime?
+
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organisation        Organisation         @relation(fields: [organisationId], references: [id])
+  medicalHistory      ResidentMedical?
+  contacts            ResidentContact[]
+  assessments         ResidentAssessment[]
+  carePlans           CarePlan[]
+  careNotes           CareNote[]
+  incidents           Incident[]
+  bodyMapEntries      BodyMapEntry[]
+  medications         Medication[]
+  gpCommunications    GPCommunication[]
+  riskProfile         RiskProfile?
+  familyUsers         FamilyUser[]
+  familyMessages      FamilyMessage[]
+  wellbeingUpdates    WellbeingUpdate[]
+  patternAlerts       PatternAlert[]
+  professionalAccesses ProfessionalAccess[] @relation("ProfAccessResident")
+
+  @@index([organisationId])
+  @@index([organisationId, status])
+}
+
+model ResidentMedical {
+  id               String   @id @default(cuid())
+  residentId       String   @unique
+
+  diagnoses        String[]
+  allergies        String[]
+  vaccinationAlerts String[]
+  currentMedications String?
+
+  mobilityLevel    MobilityLevel   @default(INDEPENDENT)
+  mobilityAids     String[]
+
+  continenceLevel  ContinenceLevel @default(CONTINENT)
+
+  dietaryNeeds     String[]
+  textureModified  Boolean  @default(false)
+  textureLevel     String?
+  fluidThickened   Boolean  @default(false)
+  fluidThickness   String?
+
+  skinIntegrityNotes String?
+  smokingStatus    String?
+  alcoholUse       String?
+  additionalNeeds  String?
+
+  updatedAt        DateTime @updatedAt
+
+  resident         Resident @relation(fields: [residentId], references: [id])
+}
+
+model ResidentContact {
+  id           String  @id @default(cuid())
+  residentId   String
+  relationship String
+  firstName    String
+  lastName     String
+  phone        String?
+  email        String?
+  address      String?
+  isNextOfKin  Boolean @default(false)
+  isPoa        Boolean @default(false)
+  isEmergency  Boolean @default(true)
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  resident     Resident @relation(fields: [residentId], references: [id])
+
+  @@index([residentId])
+}
+
+// ─────────────────────────────────────────────
+// ASSESSMENTS
+// ─────────────────────────────────────────────
+
+model ResidentAssessment {
+  id             String           @id @default(cuid())
+  residentId     String
+  type           AssessmentType
+  status         AssessmentStatus @default(IN_PROGRESS)
+  reviewDate     DateTime?
+  completedAt    DateTime?
+  approvedAt     DateTime?
+  approvedBy     String?
+  version        Int              @default(1)
+  notes          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  resident  Resident           @relation(fields: [residentId], references: [id])
+  domains   AssessmentDomain[]
+  versions  AssessmentVersion[]
+
+  @@index([residentId])
+  @@index([residentId, type])
+}
+
+model AssessmentDomain {
+  id            String  @id @default(cuid())
+  assessmentId  String
+  domainType    AssessmentDomainType
+  content       Json
+  score         Int?
+  riskLevel     RiskLevel?
+  isComplete    Boolean @default(false)
+  completedById String?
+  completedAt   DateTime?
+  notes         String?
+  updatedAt     DateTime @updatedAt
+
+  assessment   ResidentAssessment @relation(fields: [assessmentId], references: [id])
+  completedBy  User?              @relation(fields: [completedById], references: [id])
+
+  @@unique([assessmentId, domainType])
+  @@index([assessmentId])
+}
+
+model AssessmentVersion {
+  id           String   @id @default(cuid())
+  assessmentId String
+  snapshot     Json
+  createdAt    DateTime @default(now())
+  createdBy    String?
+
+  assessment ResidentAssessment @relation(fields: [assessmentId], references: [id])
+
+  @@index([assessmentId])
+}
+
+// ─────────────────────────────────────────────
+// CARE PLANS
+// ─────────────────────────────────────────────
+
+model CarePlan {
+  id             String        @id @default(cuid())
+  residentId     String
+  organisationId String
+  category       CarePlanCategory
+  status         CarePlanStatus @default(DRAFT)
+
+  needsAssessment   String?
+  goals             Json?
+  interventions     Json?
+  outcomes          Json?
+
+  aiPromptUsed   String?
+  generatedByAi  Boolean  @default(false)
+
+  reviewDate     DateTime?
+  approvedAt     DateTime?
+  approvedById   String?
+
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  resident       Resident          @relation(fields: [residentId], references: [id])
+  approvedBy     User?             @relation("CarePlanApprovedBy", fields: [approvedById], references: [id])
+  versions       CarePlanVersion[]
+  progressNotes  CarePlanProgressNote[]
+
+  @@index([residentId])
+  @@index([organisationId])
+}
+
+model CarePlanVersion {
+  id          String   @id @default(cuid())
+  carePlanId  String
+  snapshot    Json
+  createdAt   DateTime @default(now())
+  createdBy   String?
+
+  carePlan    CarePlan @relation(fields: [carePlanId], references: [id])
+
+  @@index([carePlanId])
+}
+
+model CarePlanProgressNote {
+  id         String   @id @default(cuid())
+  carePlanId String
+  note       String
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  carePlan   CarePlan @relation(fields: [carePlanId], references: [id])
+
+  @@index([carePlanId])
+}
+
+// ─────────────────────────────────────────────
+// CARE NOTES
+// ─────────────────────────────────────────────
+
+model CareNote {
+  id             String          @id @default(cuid())
+  residentId     String
+  organisationId String
+  authorId       String
+
+  category       CareNoteCategory
+  shift          Shift
+  content        String
+  aiSummary      String?
+  audioUrl       String?
+  transcriptionRaw String?
+  inputMethod    CareNoteInputMethod @default(TYPED)
+
+  deletedAt      DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  resident       Resident     @relation(fields: [residentId], references: [id])
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  author         User         @relation(fields: [authorId], references: [id])
+
+  @@index([residentId])
+  @@index([organisationId])
+  @@index([organisationId, createdAt])
+}
+
+// ─────────────────────────────────────────────
+// HANDOVER REPORTS
+// ─────────────────────────────────────────────
+
+model HandoverReport {
+  id             String   @id @default(cuid())
+  organisationId String
+  authorId       String
+  shift          Shift
+  shiftDate      DateTime
+
+  content        Json
+  manualAdditions String?
+  rawNotesCount  Int      @default(0)
+
+  createdAt      DateTime @default(now())
+
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  author         User         @relation(fields: [authorId], references: [id])
+
+  @@index([organisationId])
+  @@index([organisationId, shiftDate])
+}
+
+// ─────────────────────────────────────────────
+// INCIDENTS
+// ─────────────────────────────────────────────
+
+model Incident {
+  id             String         @id @default(cuid())
+  residentId     String
+  organisationId String
+  reportedById   String
+
+  type           IncidentType
+  severity       IncidentSeverity
+  description    String
+  location       String?
+  occurredAt     DateTime
+  witnesses      String?
+  injuryDetails  String?
+  firstAidGiven  Boolean @default(false)
+  firstAidDetails String?
+  familyNotified  Boolean @default(false)
+  gpNotified      Boolean @default(false)
+
+  status         IncidentStatus @default(OPEN)
+
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  resident       Resident           @relation(fields: [residentId], references: [id])
+  organisation   Organisation       @relation(fields: [organisationId], references: [id])
+  reportedBy     User               @relation(fields: [reportedById], references: [id])
+  followUps      IncidentFollowUp[]
+
+  @@index([residentId])
+  @@index([organisationId])
+}
+
+model IncidentFollowUp {
+  id         String   @id @default(cuid())
+  incidentId String
+  note       String
+  authorId   String
+  createdAt  DateTime @default(now())
+
+  incident   Incident @relation(fields: [incidentId], references: [id])
+  author     User     @relation(fields: [authorId], references: [id])
+
+  @@index([incidentId])
+}
+
+// ─────────────────────────────────────────────
+// BODY MAP
+// ─────────────────────────────────────────────
+
+model BodyMapEntry {
+  id             String          @id @default(cuid())
+  residentId     String
+  authorId       String
+
+  bodyRegion     String
+  description    String
+  type           BodyMapEntryType
+  severity       BodyMapSeverity
+  photoUrls      String[]
+
+  isResolved     Boolean  @default(false)
+  resolvedAt     DateTime?
+  resolvedNotes  String?
+
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  resident       Resident @relation(fields: [residentId], references: [id])
+  author         User     @relation(fields: [authorId], references: [id])
+
+  @@index([residentId])
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model Notification {
+  id             String   @id @default(cuid())
+  organisationId String
+  userId         String?
+
+  type           NotificationType
+  title          String
+  body           String
+  entityType     String?
+  entityId       String?
+
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+
+  @@index([organisationId, isRead])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organisationId String
+  userId         String
+
+  action         String
+  entityType     String
+  entityId       String
+  before         Json?
+  after          Json?
+  ipAddress      String?
+  userAgent      String?
+
+  createdAt      DateTime @default(now())
+
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@index([organisationId])
+  @@index([organisationId, entityType])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum RegulatoryBody {
+  CQC
+  CARE_INSPECTORATE
+  CSSIW
+  RQIA
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  SENIOR_CARER
+  CARE_STAFF
+}
+
+enum ResidentStatus {
+  ENQUIRY
+  PRE_ASSESSED
+  ADMITTED
+  HOSPITAL
+  DISCHARGED
+}
+
+enum MobilityLevel {
+  INDEPENDENT
+  SUPERVISED
+  ONE_PERSON_ASSIST
+  TWO_PERSON_ASSIST
+  HOIST
+  BEDBOUND
+}
+
+enum ContinenceLevel {
+  CONTINENT
+  OCCASIONALLY_INCONTINENT
+  FREQUENTLY_INCONTINENT
+  TOTALLY_INCONTINENT
+  CATHETERISED
+  STOMA
+}
+
+enum AssessmentType {
+  PRE_ADMISSION
+  ADMISSION
+  MONTHLY_REVIEW
+  UNPLANNED_REVIEW
+}
+
+enum AssessmentStatus {
+  IN_PROGRESS
+  PENDING_APPROVAL
+  APPROVED
+  SUPERSEDED
+}
+
+enum AssessmentDomainType {
+  // Pre-admission
+  PRE_ADMISSION_PERSONAL
+  PRE_ADMISSION_CARE_NEEDS
+  PRE_ADMISSION_MEDICAL
+  PRE_ADMISSION_SOCIAL
+  PRE_ADMISSION_COMMUNICATION
+  PRE_ADMISSION_PREFERENCES
+
+  // Formal assessments (19 from sample)
+  ADVANCE_CARE_PLAN
+  CALL_BELL_RISK
+  CLINICAL_FRAILTY_SCORE
+  CONTINENCE_ASSESSMENT
+  DEPENDENCY_RATING
+  EATING_DRINKING_CHOKING
+  FALLS_RISK
+  INTERESTS_ACTIVITIES
+  BED_RAILS_ASSESSMENT
+  MUST_NUTRITIONAL
+  MATTRESS_CHECK
+  MOBILITY_FUNCTION
+  MULTIFACTORIAL_FALLS
+  NUTRITIONAL_ASSESSMENT
+  ORAL_HEALTH
+  PEEP
+  PAIN_ASSESSMENT
+  PERSONAL_HYGIENE
+  WATERLOW
+  MENTAL_CAPACITY
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum CarePlanCategory {
+  PERSONAL_CARE
+  NUTRITION_HYDRATION
+  MOBILITY
+  SKIN_INTEGRITY
+  CONTINENCE
+  MENTAL_HEALTH
+  COMMUNICATION
+  MEDICATION
+  SOCIAL_ACTIVITIES
+  END_OF_LIFE
+  SLEEP_REST
+  ORAL_HEALTH
+  SENSORY
+  INFECTION_CONTROL
+  FALLS_PREVENTION
+}
+
+enum CarePlanStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+  UNDER_REVIEW
+  ARCHIVED
+}
+
+enum CareNoteCategory {
+  PERSONAL_CARE
+  FOOD_FLUID
+  MOBILITY
+  WELLBEING
+  BEHAVIOUR
+  HEALTH_CONCERN
+  SOCIAL
+  SLEEP
+  CONTINENCE
+  GENERAL
+}
+
+enum Shift {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
+
+enum IncidentType {
+  FALL
+  MEDICATION_ERROR
+  SKIN_INTEGRITY
+  BEHAVIOURAL
+  SAFEGUARDING
+  HEALTH_DETERIORATION
+  NEAR_MISS
+  COMPLAINT
+  ENVIRONMENTAL
+  OTHER
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  CLOSED
+}
+
+enum BodyMapEntryType {
+  SKIN_TEAR
+  PRESSURE_DAMAGE
+  WOUND
+  BRUISE
+  RASH
+  SWELLING
+  NEW_MARK
+  OTHER
+}
+
+enum BodyMapSeverity {
+  MINOR
+  MODERATE
+  SEVERE
+}
+
+enum NotificationType {
+  HIGH_SEVERITY_INCIDENT
+  CRITICAL_INCIDENT
+  CARE_PLAN_PENDING_APPROVAL
+  ASSESSMENT_OVERDUE
+  MEDICATION_MISSED
+  PATTERN_ALERT
+  HIGH_RISK_SCORE
+  GP_COMMUNICATION_OVERDUE
+  PHARMACY_ORDER_SUBMITTED
+  STOCK_ALERT
+  FAMILY_MESSAGE
+  WELLBEING_REMINDER
+}
+
+// ─────────────────────────────────────────────
+// eMAR — MEDICATION MANAGEMENT
+// ─────────────────────────────────────────────
+
+model Medication {
+  id              String   @id @default(cuid())
+  residentId      String
+  organisationId  String
+
+  name            String
+  genericName     String?
+  dose            String
+  unit            String
+  route           MedicationRoute
+  frequency       String          // e.g. "Once daily", "Twice daily"
+  scheduledTimes  String[]        // e.g. ["08:00","20:00"]
+  startDate       DateTime
+  endDate         DateTime?
+  prescribedBy    String?
+
+  isControlled    Boolean  @default(false)
+  isPRN           Boolean  @default(false)   // As Required
+  prnIndication   String?
+  isActive        Boolean  @default(true)
+
+  currentStock    Int      @default(0)
+  reorderLevel    Int      @default(7)        // days supply alert
+
+  notes           String?
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  resident        Resident               @relation(fields: [residentId], references: [id])
+  administrations MedicationAdministration[]
+  cdEntries       ControlledDrugRegister[]
+  stockAlerts     StockAlert[]
+
+  @@index([residentId])
+  @@index([organisationId])
+}
+
+model MedicationAdministration {
+  id              String                  @id @default(cuid())
+  medicationId    String
+  residentId      String
+  organisationId  String
+  administeredById String
+  witnessId       String?                 // For controlled drugs
+
+  status          AdministrationStatus
+  scheduledTime   DateTime
+  administeredAt  DateTime?
+  outcome         String?                 // reason for refusal/omission
+  prnFollowUpDue  DateTime?               // for PRN meds
+  prnFollowUpNote String?
+
+  signedAt        DateTime?
+  witnessSigned   Boolean  @default(false)
+  witnessSignedAt DateTime?
+
+  createdAt       DateTime @default(now())
+
+  medication      Medication @relation(fields: [medicationId], references: [id])
+
+  @@index([medicationId])
+  @@index([residentId])
+  @@index([organisationId, scheduledTime])
+}
+
+model ControlledDrugRegister {
+  id              String   @id @default(cuid())
+  medicationId    String
+  organisationId  String
+  administeredById String
+  witnessId       String
+
+  transactionType CDTransactionType
+  quantity        Int
+  balanceBefore   Int
+  balanceAfter    Int
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  medication      Medication @relation(fields: [medicationId], references: [id])
+
+  @@index([medicationId])
+  @@index([organisationId, createdAt])
+}
+
+model MedicationAudit {
+  id              String   @id @default(cuid())
+  residentId      String
+  organisationId  String
+  auditMonth      DateTime // First day of month
+  reportData      Json     // Stats: administered, refused, omitted, etc.
+  generatedAt     DateTime @default(now())
+  exportedAt      DateTime?
+
+  @@index([residentId])
+  @@index([organisationId, auditMonth])
+}
+
+// ─────────────────────────────────────────────
+// GP COMMUNICATION MODULE
+// ─────────────────────────────────────────────
+
+model GPCommunication {
+  id              String   @id @default(cuid())
+  residentId      String
+  organisationId  String
+  authorId        String
+
+  type            GPCommunicationType
+  status          GPCommunicationStatus @default(DRAFT)
+
+  subject         String
+  aiDraftContent  String?
+  finalContent    String?
+
+  approvedById    String?
+  approvedAt      DateTime?
+
+  sentAt          DateTime?
+  sentMethod      String?   // email, fax, hand-delivered
+  recipientEmail  String?
+
+  followUpDate    DateTime?
+  followUpReceived Boolean  @default(false)
+  gpResponseNotes  String?
+
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  resident        Resident @relation(fields: [residentId], references: [id])
+
+  @@index([residentId])
+  @@index([organisationId])
+  @@index([organisationId, status])
+}
+
+// ─────────────────────────────────────────────
+// PHARMACY INTEGRATION
+// ─────────────────────────────────────────────
+
+model Pharmacy {
+  id              String   @id @default(cuid())
+  organisationId  String
+  name            String
+  contactName     String?
+  phone           String?
+  email           String?
+  address         String?
+  accountNumber   String?
+  isActive        Boolean  @default(true)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organisation    Organisation      @relation(fields: [organisationId], references: [id])
+  orders          PrescriptionOrder[]
+
+  @@index([organisationId])
+}
+
+model PrescriptionOrder {
+  id              String   @id @default(cuid())
+  organisationId  String
+  pharmacyId      String
+  createdById     String
+
+  orderMonth      DateTime // First day of month
+  status          OrderStatus @default(DRAFT)
+  lineItems       Json     // Array of {medicationId, name, dose, qty, notes}
+
+  submittedAt     DateTime?
+  confirmedAt     DateTime?
+  dispensedAt     DateTime?
+  deliveredAt     DateTime?
+
+  notes           String?
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id])
+  pharmacy        Pharmacy     @relation(fields: [pharmacyId], references: [id])
+
+  @@index([organisationId])
+  @@index([pharmacyId])
+}
+
+model StockAlert {
+  id              String   @id @default(cuid())
+  medicationId    String
+  organisationId  String
+  alertType       StockAlertType
+  currentStock    Int
+  reorderLevel    Int
+  isResolved      Boolean  @default(false)
+  resolvedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  medication      Medication @relation(fields: [medicationId], references: [id])
+
+  @@index([organisationId, isResolved])
+}
+
+// ─────────────────────────────────────────────
+// AI RISK ANALYTICS
+// ─────────────────────────────────────────────
+
+model RiskProfile {
+  id                     String   @id @default(cuid())
+  residentId             String   @unique
+  organisationId         String
+
+  resident               Resident @relation(fields: [residentId], references: [id])
+
+  fallScore              Int      @default(0)   // 0-100
+  pressureUlcerScore     Int      @default(0)
+  medicationScore        Int      @default(0)
+  safeguardingScore      Int      @default(0)
+  combinedScore          Int      @default(0)   // weighted average
+
+  fallRiskLevel          RiskLevel @default(LOW)
+  pressureUlcerRiskLevel RiskLevel @default(LOW)
+  medicationRiskLevel    RiskLevel @default(LOW)
+  safeguardingRiskLevel  RiskLevel @default(LOW)
+  overallRiskLevel       RiskLevel @default(LOW)
+
+  aiRecommendations      String?  // GPT-4o-mini generated
+  lastCalculatedAt       DateTime?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  factors                RiskFactor[]
+
+  @@index([organisationId])
+  @@index([organisationId, overallRiskLevel])
+}
+
+model RiskFactor {
+  id              String   @id @default(cuid())
+  riskProfileId   String
+  domain          RiskDomain
+  description     String
+  weight          Int      // contribution weight 1-10
+  isResolved      Boolean  @default(false)
+  resolvedAt      DateTime?
+  resolvedNotes   String?
+  createdAt       DateTime @default(now())
+
+  riskProfile     RiskProfile @relation(fields: [riskProfileId], references: [id])
+
+  @@index([riskProfileId])
+}
+
+model RiskAcknowledgement {
+  id              String   @id @default(cuid())
+  residentId      String
+  organisationId  String
+  acknowledgedById String
+  domain          RiskDomain
+  notes           String
+  createdAt       DateTime @default(now())
+
+  @@index([residentId])
+  @@index([organisationId])
+}
+
+// ─────────────────────────────────────────────
+// NEW ENUMS (Phase 2)
+// ─────────────────────────────────────────────
+
+enum MedicationRoute {
+  ORAL
+  SUBLINGUAL
+  TOPICAL
+  TRANSDERMAL
+  INHALED
+  SUBCUTANEOUS
+  INTRAMUSCULAR
+  INTRAVENOUS
+  RECTAL
+  EYE_DROP
+  EAR_DROP
+  NASAL
+  OTHER
+}
+
+enum AdministrationStatus {
+  GIVEN
+  REFUSED
+  OMITTED
+  NOT_AVAILABLE
+  PENDING
+}
+
+enum CDTransactionType {
+  ADMINISTERED
+  RECEIVED
+  RETURNED
+  DESTROYED
+  DISCREPANCY
+}
+
+enum GPCommunicationType {
+  PRESCRIPTION_REQUEST
+  CLINICAL_CONCERN
+  MEDICATION_REVIEW
+  URGENT_REFERRAL
+  ROUTINE_UPDATE
+  OTHER
+}
+
+enum GPCommunicationStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  FOLLOW_UP_OVERDUE
+  CLOSED
+}
+
+enum OrderStatus {
+  DRAFT
+  SUBMITTED
+  CONFIRMED
+  DISPENSED
+  DELIVERED
+  CANCELLED
+}
+
+enum StockAlertType {
+  LOW_STOCK
+  OUT_OF_STOCK
+}
+
+enum RiskDomain {
+  FALLS
+  PRESSURE_ULCER
+  MEDICATION
+  SAFEGUARDING
+}
+
+// ─────────────────────────────────────────────
+// FAMILY PORTAL (Phase 3)
+// ─────────────────────────────────────────────
+
+model FamilyUser {
+  id               String    @id @default(cuid())
+  residentId       String
+  organisationId   String
+  email            String    @unique
+  passwordHash     String?
+  firstName        String
+  lastName         String
+  relationship     String    // e.g. "Daughter", "Son", "Power of Attorney"
+  phone            String?
+  isActive         Boolean   @default(true)
+  inviteToken      String?   @unique
+  inviteExpiresAt  DateTime?
+  inviteAcceptedAt DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  resident         Resident        @relation(fields: [residentId], references: [id])
+  sentMessages     FamilyMessage[] @relation("FamilyMessageFromFamily")
+
+  @@index([residentId])
+  @@index([organisationId])
+}
+
+model FamilyMessage {
+  id               String    @id @default(cuid())
+  residentId       String
+  organisationId   String
+  fromFamilyUserId String?
+  fromStaffId      String?
+  subject          String?
+  body             String
+  isRead           Boolean   @default(false)
+  readAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  resident         Resident    @relation(fields: [residentId], references: [id])
+  fromFamilyUser   FamilyUser? @relation("FamilyMessageFromFamily", fields: [fromFamilyUserId], references: [id])
+  fromStaff        User?       @relation("FamilyMessageFromStaff", fields: [fromStaffId], references: [id])
+
+  @@index([residentId])
+  @@index([organisationId])
+}
+
+model WellbeingUpdate {
+  id            String         @id @default(cuid())
+  residentId    String
+  organisationId String
+  createdById   String
+  mood          WellbeingMood
+  appetite      WellbeingLevel
+  sleep         WellbeingLevel
+  activityLevel WellbeingLevel
+  note          String?
+  photoUrls     String[]
+  isPublished   Boolean        @default(true)
+  publishedAt   DateTime?
+  createdAt     DateTime       @default(now())
+
+  resident      Resident @relation(fields: [residentId], references: [id])
+  createdBy     User     @relation("WellbeingUpdateCreatedBy", fields: [createdById], references: [id])
+
+  @@index([residentId])
+  @@index([organisationId, createdAt])
+}
+
+enum WellbeingMood {
+  VERY_HAPPY
+  HAPPY
+  NEUTRAL
+  SAD
+  DISTRESSED
+}
+
+enum WellbeingLevel {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+// ─────────────────────────────────────────────
+// AI PATTERN RECOGNITION
+// ─────────────────────────────────────────────
+
+model PatternAlert {
+  id               String               @id @default(cuid())
+  residentId       String
+  organisationId   String
+  severity         PatternAlertSeverity
+  category         String
+  title            String
+  description      String
+  evidence         Json
+  recommendation   String?
+  status           PatternAlertStatus   @default(OPEN)
+  dismissReason    String?
+  actionNote       String?
+  acknowledgedById String?
+  acknowledgedAt   DateTime?
+  periodFrom       DateTime
+  periodTo         DateTime
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  resident         Resident @relation(fields: [residentId], references: [id])
+
+  @@index([residentId])
+  @@index([organisationId, status])
+  @@index([organisationId, severity])
+}
+
+enum PatternAlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PatternAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  ACTION_TAKEN
+  DISMISSED
+  CLOSED
+}
+
+// ─────────────────────────────────────────────
+// INSPECTION READINESS
+// ─────────────────────────────────────────────
+
+model RegulatoryStandard {
+  id             String         @id @default(cuid())
+  regulatoryBody RegulatoryBody
+  domain         String
+  code           String
+  title          String
+  description    String
+  dataMapping    Json
+  weight         Int            @default(1)
+  isActive       Boolean        @default(true)
+
+  evidence       ComplianceEvidence[]
+
+  @@unique([regulatoryBody, code])
+  @@index([regulatoryBody, domain])
+}
+
+model ComplianceEvidence {
+  id             String   @id @default(cuid())
+  organisationId String
+  standardId     String
+  entityType     String
+  entityId       String
+  entityDate     DateTime
+  residentId     String?
+  residentName   String?
+  summary        String
+  isRecent       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  standard       RegulatoryStandard @relation(fields: [standardId], references: [id])
+
+  @@index([organisationId, standardId])
+  @@index([organisationId, entityType])
+}
+
+model MockInspectionReport {
+  id               String            @id @default(cuid())
+  organisationId   String
+  regulatoryBody   RegulatoryBody
+  overallRating    InspectionRating?
+  domainRatings    Json
+  reportContent    String
+  strengthsSummary String?
+  gapsSummary      String?
+  actionPlan       Json?
+  evidenceSnapshot Json
+  generatedById    String?
+  createdAt        DateTime          @default(now())
+
+  @@index([organisationId])
+  @@index([organisationId, createdAt])
+}
+
+enum InspectionRating {
+  OUTSTANDING
+  GOOD
+  REQUIRES_IMPROVEMENT
+  INADEQUATE
+}
+
+// ─────────────────────────────────────────────
+// PHASE 4 — SCALE FEATURES
+// ─────────────────────────────────────────────
+
+// Step 22: Voice Input — CareNote already has content; we add audio fields
+// via schema update to CareNote at migration time (audioUrl, transcriptionRaw, inputMethod)
+
+// Step 23: Staff Management
+
+model StaffProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  organisationId  String
+  employeeRef     String?
+  jobTitle        String?
+  contractedHours Float    @default(0)
+  startDate       DateTime?
+  dbs             String?
+  dbsExpiry       DateTime?
+  phone           String?
+  emergencyName   String?
+  emergencyPhone  String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id])
+
+  trainingRecords TrainingRecord[]
+  supervisionLogs SupervisionLog[]
+  rotaShifts      RotaShift[]
+
+  @@index([organisationId])
+}
+
+model RotaShift {
+  id              String       @id @default(cuid())
+  organisationId  String
+  staffProfileId  String
+  date            DateTime     @db.Date
+  shiftType       Shift
+  startTime       String
+  endTime         String
+  role            String?
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  staffProfile    StaffProfile @relation(fields: [staffProfileId], references: [id])
+
+  @@index([organisationId, date])
+  @@index([staffProfileId])
+}
+
+model TrainingRecord {
+  id              String              @id @default(cuid())
+  staffProfileId  String
+  organisationId  String
+  trainingType    TrainingType
+  completedAt     DateTime?
+  expiresAt       DateTime?
+  certificateUrl  String?
+  notes           String?
+  isCompleted     Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  staffProfile    StaffProfile        @relation(fields: [staffProfileId], references: [id])
+
+  @@index([staffProfileId])
+  @@index([organisationId, trainingType])
+}
+
+model SupervisionLog {
+  id              String       @id @default(cuid())
+  staffProfileId  String
+  organisationId  String
+  supervisorId    String
+  supervisedAt    DateTime
+  nextDueAt       DateTime?
+  summary         String?
+  actionPoints    String?
+  createdAt       DateTime     @default(now())
+
+  staffProfile    StaffProfile @relation(fields: [staffProfileId], references: [id])
+
+  @@index([staffProfileId])
+  @@index([organisationId])
+}
+
+// Step 24: Multi-Site Dashboard
+
+model OrganisationGroup {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships   GroupMembership[]
+  groupUsers    GroupUser[]
+}
+
+model GroupMembership {
+  id          String            @id @default(cuid())
+  groupId     String
+  orgId       String
+  addedAt     DateTime          @default(now())
+
+  group        OrganisationGroup @relation(fields: [groupId], references: [id])
+  organisation Organisation      @relation(fields: [orgId], references: [id])
+
+  @@unique([groupId, orgId])
+  @@index([groupId])
+  @@index([orgId])
+}
+
+model GroupUser {
+  id        String            @id @default(cuid())
+  groupId   String
+  userId    String
+  role      GroupUserRole     @default(VIEWER)
+  createdAt DateTime          @default(now())
+
+  group     OrganisationGroup @relation(fields: [groupId], references: [id])
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+}
+
+// Step 25: GP & Healthcare Professional Portal
+
+model ProfessionalUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  profession   String
+  gmcNumber    String?
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  accessGrants ProfessionalAccess[]
+}
+
+model ProfessionalAccess {
+  id               String           @id @default(cuid())
+  professionalId   String
+  organisationId   String
+  residentId       String
+  grantedById      String
+  grantedAt        DateTime         @default(now())
+  expiresAt        DateTime
+  isRevoked        Boolean          @default(false)
+  revokedAt        DateTime?
+  revokedById      String?
+  accessType       ProfessionalAccessType @default(READ_ONLY)
+  notes            String?
+
+  professional     ProfessionalUser @relation(fields: [professionalId], references: [id])
+  resident         Resident         @relation("ProfAccessResident", fields: [residentId], references: [id])
+  grantedBy        User             @relation("ProfAccessGrantedBy", fields: [grantedById], references: [id])
+
+  @@index([professionalId])
+  @@index([organisationId])
+  @@index([residentId])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────
+// PHASE 4 ENUMS
+// ─────────────────────────────────────────────
+
+enum TrainingType {
+  MOVING_AND_HANDLING
+  SAFEGUARDING_ADULTS
+  FIRE_SAFETY
+  INFECTION_CONTROL
+  FIRST_AID
+  FOOD_HYGIENE
+  DEMENTIA_AWARENESS
+  MENTAL_CAPACITY_ACT
+  MEDICATION_MANAGEMENT
+  DATA_PROTECTION
+  HEALTH_AND_SAFETY
+  EQUALITY_AND_DIVERSITY
+}
+
+enum GroupUserRole {
+  OWNER
+  ADMIN
+  VIEWER
+}
+
+enum ProfessionalAccessType {
+  READ_ONLY
+  COMMENT
+}
+
+enum CareNoteInputMethod {
+  TYPED
+  VOICE
+}
