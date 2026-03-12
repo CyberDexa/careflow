@@ -2,8 +2,9 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-import { BookOpen, Calendar, Sparkles } from "lucide-react"
+import { BookOpen, Calendar, Plus, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatDate } from "@/lib/utils"
 
@@ -100,6 +101,12 @@ export default async function CarePlansPage({ searchParams }: Props) {
             All active and draft care plans across residents
           </p>
         </div>
+        <Button asChild>
+          <Link href="/residents?action=new-care-plan">
+            <Plus className="h-4 w-4 mr-1" />
+            New Care Plan
+          </Link>
+        </Button>
       </div>
 
       {/* Overdue review alert */}
