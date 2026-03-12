@@ -51,9 +51,12 @@ interface RiskDashboardTableProps {
 export function RiskDashboardTable({ profiles }: RiskDashboardTableProps) {
   if (profiles.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-12">
-        No risk profiles yet. Profiles are calculated nightly or when you view a resident.
-      </p>
+      <div className="text-center py-12 space-y-2">
+        <p className="text-sm font-medium text-muted-foreground">No risk profiles yet</p>
+        <p className="text-xs text-muted-foreground">
+          Click <strong>Calculate Risk Scores</strong> to analyse all admitted residents.
+        </p>
+      </div>
     )
   }
 

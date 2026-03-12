@@ -2,6 +2,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { getOrgRiskDashboard } from '@/actions/risk-analytics'
 import { RiskDashboardTable } from '@/components/risk-analytics/risk-dashboard-table'
+import { RecalculateRiskButton } from '@/components/risk-analytics/recalculate-risk-button'
 import { Activity, ShieldAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
@@ -34,12 +35,15 @@ export default async function RiskAnalyticsPage() {
             AI-powered risk scoring across all admitted residents
           </p>
         </div>
-        {highRiskCount > 0 && (
-          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
-            <ShieldAlert className="h-4 w-4" />
-            {highRiskCount} resident{highRiskCount > 1 ? 's' : ''} HIGH or VERY HIGH risk
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {highRiskCount > 0 && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+              <ShieldAlert className="h-4 w-4" />
+              {highRiskCount} resident{highRiskCount > 1 ? 's' : ''} HIGH or VERY HIGH risk
+            </div>
+          )}
+          <RecalculateRiskButton />
+        </div>
       </div>
 
       <div className="bg-card border rounded-xl p-6">

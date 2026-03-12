@@ -87,6 +87,8 @@ interface Administration {
   outcome: string | null
   marCode?: string | null
   roundSlot?: string | null
+  painScoreBefore?: number | null
+  painScoreAfter?: number | null
   administeredBy?: { firstName: string; lastName: string } | null
 }
 
@@ -299,7 +301,7 @@ export function MARGrid({ residentId, medications, administrations, staffList = 
             </thead>
             <tbody>
               {medications.map(med => {
-                const rounds = getRoundsForFrequency(med.frequency)
+                const rounds: RoundSlotKey[] = med.isPRN ? ['prn'] : getRoundsForFrequency(med.frequency)
                 return rounds.map((slotKey, slotIdx) => {
                   const slot = ROUND_SLOTS.find(s => s.key === slotKey)!
                   const isFirstSlot = slotIdx === 0
@@ -378,7 +380,11 @@ export function MARGrid({ residentId, medications, administrations, staffList = 
                 <td className="px-3 py-2 font-medium">{a.med?.name}</td>
                 <td className="px-3 py-2">{a.med ? `${a.med.dose} ${a.med.unit}` : '—'}</td>
                 <td className="px-3 py-2">{a.outcome ?? '—'}</td>
-                <td className="px-3 py-2">—</td>
+                <td className="px-3 py-2">
+                  {a.painScoreBefore != null && a.painScoreAfter != null
+                    ? <span className="font-medium">{a.painScoreBefore} → {a.painScoreAfter}{a.painScoreAfter < a.painScoreBefore ? ' ✓' : ''}</span>
+                    : '—'}
+                </td>
                 <td className="px-3 py-2">
                   {a.administeredBy ? `${a.administeredBy.firstName} ${a.administeredBy.lastName}` : '—'}
                 </td>
@@ -479,15 +485,21 @@ export function MARGrid({ residentId, medications, administrations, staffList = 
                 </div>
               )}
 
-              {/* Notes — required for non-G codes */}
-              {marCode !== 'G' && (
+              {/* Reason — required for non-G; also shown for PRN so carers document why given */}
+              {(marCode !== 'G' || selectedMed.isPRN || selectedCell.roundSlot === 'prn') && (
                 <div>
-                  <Label>Reason / Notes *</Label>
+                  <Label>
+                    {marCode !== 'G' ? 'Reason / Notes *' : 'Reason for giving (PRN)'}
+                  </Label>
                   <Textarea
                     value={notes}
                     onChange={e => setNotes(e.target.value)}
                     rows={2}
-                    placeholder={`Reason for ${MAR_CODES[marCode].label}…`}
+                    placeholder={
+                      marCode !== 'G'
+                        ? `Reason for ${MAR_CODES[marCode].label}…`
+                        : 'e.g. Patient complaining of pain 8/10, requested medication…'
+                    }
                   />
                 </div>
               )}
