@@ -69,8 +69,24 @@ model User {
   wellbeingUpdates    WellbeingUpdate[] @relation("WellbeingUpdateCreatedBy")
   staffProfile        StaffProfile?
   professionalAccessesGranted ProfessionalAccess[] @relation("ProfAccessGrantedBy")
+  medicationAdministrations   MedicationAdministration[] @relation("MedAdminBy")
+  passwordResetTokens         PasswordResetToken[]
 
   @@index([organisationId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
 }
 
 // ─────────────────────────────────────────────
@@ -723,10 +739,13 @@ model Medication {
   isControlled    Boolean  @default(false)
   isPRN           Boolean  @default(false)   // As Required
   prnIndication   String?
+  prnMinIntervalHours Int?  @default(4)      // minimum hours between PRN doses
   isActive        Boolean  @default(true)
 
   currentStock    Int      @default(0)
   reorderLevel    Int      @default(7)        // days supply alert
+  batchNumber     String?
+  expiryDate      DateTime?
 
   notes           String?
   deletedAt       DateTime?
@@ -751,11 +770,15 @@ model MedicationAdministration {
   witnessId       String?                 // For controlled drugs
 
   status          AdministrationStatus
+  marCode         MARCode?                // UK MAR chart code
+  roundSlot       RoundSlot?              // which round this belongs to
   scheduledTime   DateTime
   administeredAt  DateTime?
   outcome         String?                 // reason for refusal/omission
   prnFollowUpDue  DateTime?               // for PRN meds
   prnFollowUpNote String?
+  painScoreBefore Int?                    // 0-10 pain scale (PRN)
+  painScoreAfter  Int?                    // 0-10 pain scale follow-up
 
   signedAt        DateTime?
   witnessSigned   Boolean  @default(false)
@@ -764,6 +787,7 @@ model MedicationAdministration {
   createdAt       DateTime @default(now())
 
   medication      Medication @relation(fields: [medicationId], references: [id])
+  administeredBy  User       @relation("MedAdminBy", fields: [administeredById], references: [id])
 
   @@index([medicationId])
   @@index([residentId])
@@ -998,6 +1022,30 @@ enum AdministrationStatus {
   OMITTED
   NOT_AVAILABLE
   PENDING
+}
+
+// UK standard MAR chart codes
+enum MARCode {
+  G   // Given
+  R   // Refused
+  S   // Sleeping
+  P   // Pulse abnormal
+  M   // Made available (self-admin)
+  H   // Hospitalised
+  D   // Destroyed
+  N   // Nausea
+  L   // On Leave
+  Q   // Not required (PRN)
+  O   // Other
+}
+
+enum RoundSlot {
+  MORNING
+  LUNCHTIME
+  TEA_TIME
+  EVENING
+  NIGHT
+  PRN
 }
 
 enum CDTransactionType {

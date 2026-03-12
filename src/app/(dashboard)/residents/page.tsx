@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { formatAge, formatDate, initials } from "@/lib/utils"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, Info } from "lucide-react"
 
 export const metadata = { title: "Residents" }
 
@@ -23,13 +23,13 @@ const statusConfig: Record<string, { label: string; variant: any; color: string 
 export default async function ResidentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>
+  searchParams: Promise<{ status?: string; q?: string; action?: string }>
 }) {
   const session = await auth()
   if (!session?.user) redirect("/login")
   const user = session.user as any
 
-  const { status, q } = await searchParams
+  const { status, q, action } = await searchParams
 
   const residents = await prisma.resident.findMany({
     where: {
@@ -66,6 +66,20 @@ export default async function ResidentsPage({
           </Link>
         </Button>
       </div>
+
+      {/* Action banner */}
+      {action === "report-incident" && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20 px-4 py-3 flex items-center gap-2 text-sm">
+          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+          <span className="text-blue-800 dark:text-blue-300 font-medium">Select a resident to report an incident for.</span>
+        </div>
+      )}
+      {action === "new-care-plan" && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20 px-4 py-3 flex items-center gap-2 text-sm">
+          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+          <span className="text-blue-800 dark:text-blue-300 font-medium">Select a resident to create a care plan for.</span>
+        </div>
+      )}
 
       {/* Filters row */}
       <div className="flex flex-wrap gap-2 items-center">
@@ -112,8 +126,14 @@ export default async function ResidentsPage({
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {residents.map((resident: any) => {
             const cfg = statusConfig[resident.status] || statusConfig.ENQUIRY
+            const href =
+              action === "report-incident"
+                ? `/incidents/new?residentId=${resident.id}`
+                : action === "new-care-plan"
+                ? `/residents/${resident.id}/care-plans/new`
+                : `/residents/${resident.id}`
             return (
-              <Link key={resident.id} href={`/residents/${resident.id}`}>
+              <Link key={resident.id} href={href}>
                 <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">

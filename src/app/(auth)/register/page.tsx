@@ -10,28 +10,30 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FormField } from "@/components/ui/form-field"
-import { registerSchema, type RegisterInput } from "@/lib/validations"
+import { registerClientSchema, type RegisterClientInput } from "@/lib/validations"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 export default function RegisterPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const {
     register,
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterInput>({
-    resolver: zodResolver(registerSchema) as any,
+  } = useForm<RegisterClientInput>({
+    resolver: zodResolver(registerClientSchema) as any,
     defaultValues: { regulatoryBody: "CQC" },
   })
 
-  async function onSubmit(data: RegisterInput) {
+  async function onSubmit(data: RegisterClientInput) {
+    const { confirmPassword: _, ...payload } = data
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     })
 
     if (!res.ok) {
@@ -103,6 +105,29 @@ export default function RegisterPage() {
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </FormField>
+
+        <FormField
+          label="Confirm password"
+          error={errors.confirmPassword?.message}
+          required
+        >
+          <div className="relative">
+            <Input
+              {...register("confirmPassword")}
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="••••••••"
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              tabIndex={-1}
+            >
+              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </FormField>

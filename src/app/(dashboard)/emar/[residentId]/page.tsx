@@ -7,8 +7,11 @@ import { MARGrid } from '@/components/emar/mar-grid'
 import { CDRegister } from '@/components/emar/cd-register'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Pill } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Pill, Shield, PackageX, FlaskConical, Link } from 'lucide-react'
 import { startOfMonth } from 'date-fns'
+import NextLink from 'next/link'
+import { format } from 'date-fns'
 
 export async function generateMetadata({ params }: { params: Promise<{ residentId: string }> }) {
   const { residentId } = await params
@@ -32,7 +35,7 @@ export default async function EmarResidentPage({
   const [resident, staff] = await Promise.all([
     prisma.resident.findFirst({
       where: { id: residentId, organisationId: user.organisationId, deletedAt: null },
-      select: { id: true, firstName: true, lastName: true, roomNumber: true, status: true },
+      select: { id: true, firstName: true, lastName: true, roomNumber: true, status: true, dateOfBirth: true },
     }),
     prisma.user.findMany({
       where: { organisationId: user.organisationId, isActive: true },
@@ -51,42 +54,83 @@ export default async function EmarResidentPage({
 
   const activeMeds = medications.filter((m) => m.isActive)
   const controlledMeds = activeMeds.filter((m) => m.isControlled)
+  const prnMeds = activeMeds.filter((m) => m.isPRN)
+  const lowStockMeds = activeMeds.filter((m) => m.currentStock <= m.reorderLevel)
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
             <Pill className="h-5 w-5 text-primary" />
-            <h1 className="text-2xl font-bold">eMAR</h1>
+            <h1 className="text-2xl font-bold">Medication Administration Record (MAR)</h1>
           </div>
           <p className="text-muted-foreground mt-1">
-            {resident.firstName} {resident.lastName} · Room {resident.roomNumber}
+            {resident.firstName} {resident.lastName}
+            {resident.dateOfBirth && (
+              <span className="ml-2 text-xs">DOB: {format(new Date(resident.dateOfBirth), 'dd/MM/yyyy')}</span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">{activeMeds.length} active med{activeMeds.length !== 1 ? 's' : ''}</Badge>
-          {controlledMeds.length > 0 && (
-            <Badge variant="destructive">{controlledMeds.length} CD</Badge>
+          {prnMeds.length > 0 && (
+            <NextLink href={`/emar/${residentId}/prn-protocols`}>
+              <Button variant="outline" size="sm">
+                <FlaskConical className="h-4 w-4 mr-1" />PRN Protocols
+              </Button>
+            </NextLink>
           )}
+          <NextLink href={`/medications/${residentId}`}>
+            <Button variant="outline" size="sm">
+              <Pill className="h-4 w-4 mr-1" />Medications
+            </Button>
+          </NextLink>
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <Pill className="h-3.5 w-3.5" />Active Prescriptions
+          </div>
+          <p className="text-2xl font-bold">{activeMeds.length}</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <FlaskConical className="h-3.5 w-3.5" />PRN Medications
+          </div>
+          <p className="text-2xl font-bold">{prnMeds.length}</p>
+        </div>
+        <div className={`rounded-xl border p-4 ${lowStockMeds.length > 0 ? 'border-amber-400/60 bg-amber-500/5' : 'bg-card'}`}>
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <PackageX className="h-3.5 w-3.5" />Low Stock
+          </div>
+          <p className={`text-2xl font-bold ${lowStockMeds.length > 0 ? 'text-amber-500' : ''}`}>{lowStockMeds.length}</p>
+        </div>
+        <div className={`rounded-xl border p-4 ${controlledMeds.length > 0 ? 'border-red-400/60 bg-red-500/5' : 'bg-card'}`}>
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <Shield className="h-3.5 w-3.5" />Controlled Drugs
+          </div>
+          <p className={`text-2xl font-bold ${controlledMeds.length > 0 ? 'text-red-500' : ''}`}>{controlledMeds.length}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="medications">
+      <Tabs defaultValue="mar">
         <TabsList>
-          <TabsTrigger value="medications">Medications</TabsTrigger>
           <TabsTrigger value="mar">MAR Chart</TabsTrigger>
+          <TabsTrigger value="medications">UK Stock</TabsTrigger>
           {controlledMeds.length > 0 && (
-            <TabsTrigger value="cd-register">CD Register</TabsTrigger>
+            <TabsTrigger value="cd-register">Controlled Drugs</TabsTrigger>
           )}
         </TabsList>
 
         <TabsContent value="medications" className="mt-4">
           <MedicationList
             residentId={residentId}
-            medications={medications}
+            medications={medications as any}
             userRole={user.role}
           />
         </TabsContent>
@@ -103,7 +147,7 @@ export default async function EmarResidentPage({
               scheduledTimes: m.scheduledTimes as string[],
               isControlled: m.isControlled,
               isPRN: m.isPRN,
-            }))}
+              frequency: m.frequency,              currentStock: (m as any).currentStock ?? 0,            }))}
             administrations={marData.administrations.map((a) => ({
               id: a.id,
               medicationId: a.medicationId,

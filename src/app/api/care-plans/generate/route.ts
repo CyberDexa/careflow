@@ -84,31 +84,47 @@ export async function POST(req: NextRequest) {
       ? `Diagnoses: ${resident.medicalHistory.diagnoses?.join(", ") ?? "Unknown"}. Allergies: ${resident.medicalHistory.allergies?.join(", ") ?? "None"}. Mobility: ${resident.medicalHistory.mobilityLevel ?? "Unknown"}. Continence: ${resident.medicalHistory.continenceLevel ?? "Unknown"}. DNACPR: ${resident.dnacprInPlace ? "Yes" : "No"}.`
       : "No medical information available."
 
-    const systemPrompt = `You are a specialist care plan author for a UK-registered care home. 
-Write person-centred, outcome-focused care plans using the "What Matters to Me" approach.
-Follow the CQC Key Lines of Enquiry (KLOE) and personalisation principles.
-Each care plan section must use the exact UK care home documentation standard format.
+    const systemPrompt = `You are a specialist care plan author for a UK-registered care home.
+Write person-centred, outcome-focused care plans that match the depth and style of real UK care home documentation.
+Follow the CQC Key Lines of Enquiry (KLOE), person-centred values, and the "What Matters to Me" approach.
+
+STYLE REQUIREMENTS:
+- Care Needs must be DETAILED: 3–4 paragraphs covering the person's current functioning, history, specific risks, preferences, how their condition affects this area, what support looks like, and any cognitive/behavioural factors
+- Goals must be SPECIFIC and MEASURABLE: 5–7 outcomes, each one concrete
+- Actions must be COMPREHENSIVE: 10–14 numbered items. Complex steps should have 3–5 sub-bullet points. Reference specific equipment, staffing ratios, frequencies, de-escalation steps, escalation criteria
+- Use the person's name (e.g. "Mr X") throughout
+- Write in the third person for Care Needs, first person for Goals ("will...")
+- Include specific clinical details: staffing ratios (e.g. "two staff"), equipment (e.g. "slide sheet", "Zimmer frame"), timing (e.g. "every 2 hours", "twice daily"), and escalation contacts
+- Goals section should be labelled "Goals & Outcomes" and include measurable outcomes
+- Actions must include: monitoring triggers, escalation pathways, de-escalation strategies, documentation requirements, and family/NOK involvement where relevant
 Output must be structured JSON — no markdown, no extra text.`
 
-    const userPrompt = `Write a care plan for the ${categoryLabel} domain.
+    const userPrompt = `Write a comprehensive, clinically detailed care plan for the ${categoryLabel} domain.
 
 RESIDENT:
 Name: ${resident.firstName} ${resident.lastName}, Preferred: ${resident.preferredName ?? "As above"}
 Age: ${resident.dateOfBirth ? Math.floor((Date.now() - new Date(resident.dateOfBirth).getTime()) / 3.15e10) : "Unknown"} years
 ${medicalContext}
 Religion: ${resident.religion ?? "Not stated"}. Language: ${resident.language ?? "English"}
+NOK/Welfare POA: ${resident.contacts?.[0] ? `${resident.contacts[0].firstName} ${resident.contacts[0].lastName} (${resident.contacts[0].relationship})` : "Not recorded"}
 
 RECENT ASSESSMENT DATA:
 ${assessmentContext || "No assessment data recorded yet."}
 
-Return a valid JSON object (no extra text) with these exact keys:
+Return ONLY a valid JSON object with these exact keys. DO NOT truncate — all sections must be fully written out:
 {
-  "needsAssessment": "Care needs: 2–3 sentences describing the individual's current care needs in this domain, written in a person-centred way that describes what support is required and why",
-  "goals": ["Outcome/goal: each item is a specific, measurable, person-centred goal — e.g. 'Outcome/goal: [Name] will maintain skin integrity with no new pressure damage developing'"],
-  "interventions": ["Description of care actions: each item is a specific action staff must take — how, when, with what equipment or approach — e.g. 'Description of care actions: Two staff to assist with repositioning every 2 hours using a slide sheet, recording in the turning chart'"],
-  "outcomes": ["Able to do themselves: each item describes something the resident can do independently or with minimal prompting — e.g. 'Able to do themselves: [Name] is able to wash their own face and hands with verbal prompting'"],
-  "reviewDate": "ISO date string for recommended next review (typically 3 months from now)",
-  "riskFlags": ["any specific risk alerts for this domain — empty array if none"]
+  "needsAssessment": "3–4 detailed paragraphs describing: (1) the person's current needs and how their condition affects this domain, (2) their specific preferences, communication needs, and what matters to them, (3) risks and clinical considerations, (4) what effective support looks like for them. Written in person-centred, third-person narrative. Minimum 200 words.",
+  "goals": [
+    "Goals & Outcomes: [Name] will [specific measurable outcome] — include 5–7 items, each a concrete, person-centred goal"
+  ],
+  "interventions": [
+    "1. [Action heading]: detailed instruction for staff including how, when, with what equipment/resources, staffing ratio — include 10–14 numbered items. For complex steps add sub-points as: '\\n  • sub-point'. Include monitoring, escalation, and documentation steps."
+  ],
+  "outcomes": [
+    "Able to do themselves / With support: [Name] is able to [specific task] — include 3–5 items describing independence levels"
+  ],
+  "reviewDate": "ISO date string for recommended next review (3 months from today)",
+  "riskFlags": ["specific risk alerts for this domain — empty array if none"]
 }`
 
     const response = await openai.chat.completions.create({
@@ -118,7 +134,7 @@ Return a valid JSON object (no extra text) with these exact keys:
         { role: "user", content: userPrompt },
       ],
       temperature: 0.4,
-      max_tokens: 1200,
+      max_tokens: 3500,
       response_format: { type: "json_object" },
     })
 

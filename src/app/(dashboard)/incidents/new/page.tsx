@@ -17,7 +17,7 @@ export default async function NewIncidentPage({ searchParams }: Props) {
 
   if (!residentId) {
     // No resident specified — redirect to residents list to pick one
-    redirect("/residents")
+    redirect("/residents?action=report-incident")
   }
 
   const user = session.user as any

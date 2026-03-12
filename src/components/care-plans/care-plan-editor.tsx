@@ -164,8 +164,8 @@ export function CarePlanEditor({ residentId, residentName, defaultCategory }: Ca
             <Textarea
               value={needsAssessment}
               onChange={(e) => setNeedsAssessment(e.target.value)}
-              rows={3}
-              className="resize-none text-sm"
+              rows={8}
+              className="resize-y text-sm"
               placeholder="Describe the individual’s current care needs in this area…"
             />
           </section>
@@ -202,7 +202,7 @@ export function CarePlanEditor({ residentId, residentName, defaultCategory }: Ca
             {interventions.map((int, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <span className="text-xs text-muted-foreground mt-2.5 w-4 shrink-0">{i + 1}.</span>
-                <Textarea value={int} onChange={(e) => updateListItem(setInterventions, i, e.target.value)} rows={2} className="resize-none text-sm" placeholder="e.g. Two staff to assist with repositioning every 2 hours using a slide sheet" />
+                <Textarea value={int} onChange={(e) => updateListItem(setInterventions, i, e.target.value)} rows={3} className="resize-y text-sm" placeholder="e.g. Two staff to assist with repositioning every 2 hours using a slide sheet" />
                 <button type="button" onClick={() => removeListItem(setInterventions, i)} className="text-muted-foreground hover:text-destructive mt-2 text-sm px-1">×</button>
               </div>
             ))}

@@ -206,12 +206,13 @@ async function generateAIRecommendations(
     return 'No significant risk factors identified at this time. Continue routine monitoring.'
   }
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: `You are a senior care quality advisor in a UK registered care home. 
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a senior care quality advisor in a UK registered care home. 
 Based on active risk factors, provide 3–5 specific, actionable recommendations to reduce identified risks.
 Requirements:
 - Plain language understandable to care staff
@@ -219,17 +220,20 @@ Requirements:
 - Reference CQC Safe domain requirements where relevant
 - Do NOT speculate beyond the data provided
 - Format as a numbered list only — no markdown headers`,
-      },
-      {
-        role: 'user',
-        content: `Resident: ${residentName}\n\nActive risk factors:\n${activeFactors.map(f => `- ${f}`).join('\n')}\n\nProvide 3–5 specific risk reduction recommendations.`,
-      },
-    ],
-    temperature: 0.4,
-    max_tokens: 400,
-  })
-
-  return completion.choices[0].message.content ?? 'Unable to generate recommendations at this time.'
+        },
+        {
+          role: 'user',
+          content: `Resident: ${residentName}\n\nActive risk factors:\n${activeFactors.map(f => `- ${f}`).join('\n')}\n\nProvide 3–5 specific risk reduction recommendations.`,
+        },
+      ],
+      temperature: 0.4,
+      max_tokens: 400,
+    })
+    return completion.choices[0].message.content ?? 'Unable to generate recommendations at this time.'
+  } catch {
+    // OpenAI unavailable — return a rule-based summary instead
+    return activeFactors.map((f, i) => `${i + 1}. Review and address: ${f}`).join('\n')
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -438,4 +442,16 @@ export async function runOrgRiskAnalysis(organisationId: string) {
   }
 
   return results
+}
+
+// ─────────────────────────────────────────────
+// TRIGGER RISK CALCULATION FROM UI
+// ─────────────────────────────────────────────
+
+export async function triggerAllRiskCalculations() {
+  const session = await getServerSession()
+  const user = session.user as any
+  if (!['MANAGER', 'ADMIN'].includes(user.role)) throw new Error('Manager access required')
+
+  return runOrgRiskAnalysis(user.organisationId)
 }

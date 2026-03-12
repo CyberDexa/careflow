@@ -31,6 +31,7 @@ const medicationSchema = z.object({
   isControlled: z.boolean().default(false),
   isPRN: z.boolean().default(false),
   prnIndication: z.string().optional(),
+  prnMinIntervalHours: z.number().int().min(1).default(4),
   currentStock: z.number().int().min(0).default(0),
   reorderLevel: z.number().int().min(1).default(7),
   notes: z.string().optional(),
@@ -44,6 +45,10 @@ const administrationSchema = z.object({
   administeredAt: z.string().optional(),
   outcome: z.string().optional(),
   witnessId: z.string().optional(),
+  marCode: z.enum(['G', 'R', 'S', 'P', 'M', 'H', 'D', 'N', 'L', 'Q', 'O']).optional(),
+  roundSlot: z.enum(['MORNING', 'LUNCHTIME', 'TEA_TIME', 'EVENING', 'NIGHT', 'PRN']).optional(),
+  painScoreBefore: z.number().int().min(0).max(10).optional(),
+  painScoreAfter: z.number().int().min(0).max(10).optional(),
 })
 
 const cdRegisterSchema = z.object({
@@ -141,6 +146,34 @@ export async function updateMedication(
   return { success: true, medication }
 }
 
+export async function updateMedicationStock(id: string, newStock: number) {
+  const session = await getServerSession()
+  const user = session.user as any
+
+  const existing = await prisma.medication.findFirst({
+    where: { id, organisationId: user.organisationId, deletedAt: null },
+  })
+  if (!existing) throw new Error('Medication not found')
+
+  const medication = await prisma.medication.update({
+    where: { id },
+    data: { currentStock: newStock },
+  })
+
+  await logAudit({
+    organisationId: user.organisationId,
+    userId: user.id,
+    action: 'UPDATE',
+    entityType: 'Medication',
+    entityId: id,
+    before: { currentStock: existing.currentStock },
+    after: { currentStock: newStock },
+  })
+
+  revalidatePath(`/emar/${existing.residentId}`)
+  return { success: true }
+}
+
 export async function discontinueMedication(id: string) {
   const session = await getServerSession()
   const user = session.user as any
@@ -194,6 +227,9 @@ export async function getMARGridData(residentId: string, month: Date) {
         residentId,
         organisationId: user.organisationId,
         scheduledTime: { gte: start, lte: end },
+      },
+      include: {
+        administeredBy: { select: { firstName: true, lastName: true } },
       },
       orderBy: { scheduledTime: 'asc' },
     }),
@@ -253,12 +289,24 @@ export async function recordAdministration(data: z.infer<typeof administrationSc
       scheduledTime: new Date(validated.scheduledTime),
       administeredAt: validated.status === 'GIVEN' ? new Date(validated.administeredAt ?? Date.now()) : undefined,
       outcome: validated.outcome,
+      ...(validated.marCode ? { marCode: validated.marCode as any } : {}),
+      ...(validated.roundSlot ? { roundSlot: validated.roundSlot as any } : {}),
+      ...(validated.painScoreBefore !== undefined ? { painScoreBefore: validated.painScoreBefore } : {}),
+      ...(validated.painScoreAfter !== undefined ? { painScoreAfter: validated.painScoreAfter } : {}),
       prnFollowUpDue: medication.isPRN && validated.status === 'GIVEN'
         ? addHours(new Date(), 1)
         : undefined,
       signedAt: new Date(),
     },
   })
+
+  // Decrement stock on every successful administration
+  if (validated.status === 'GIVEN' && medication.currentStock > 0) {
+    await prisma.medication.update({
+      where: { id: medication.id },
+      data: { currentStock: { decrement: 1 } },
+    })
+  }
 
   // Update controlled drug register
   if (medication.isControlled && validated.status === 'GIVEN' && validated.witnessId) {

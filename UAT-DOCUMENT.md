@@ -48,7 +48,7 @@
 10. [Incident Reporting](#10-incident-reporting)
 11. [Body Map](#11-body-map)
 12. [Voice Input](#12-voice-input)
-13. [eMAR (Medication Administration)](#13-emar-medication-administration)
+13. [eMAR (Medication Administration)](#13-emar-medication-administration) — Weekly MAR grid, UK codes, PRN log, stock management
 14. [GP Communications](#14-gp-communications)
 15. [Pharmacy](#15-pharmacy)
 16. [Risk Analytics](#16-risk-analytics)
@@ -280,21 +280,40 @@
 
 ## 13. eMAR (Medication Administration)
 
-**Routes:** `/(dashboard)/emar`, `/(dashboard)/emar/[residentId]`  
-**Purpose:** Verify medication management, MAR grid, administration workflow, and controlled drugs.
+**Routes:** `/(dashboard)/emar`, `/(dashboard)/emar/[residentId]`, `/(dashboard)/medications/[residentId]`, `/(dashboard)/emar/[residentId]/prn-protocols`  
+**Purpose:** Verify weekly MAR grid, UK MAR codes, multi-slot administration, PRN workflows, stock management, and controlled drug register.
 
 | # | Test Case | Steps | Expected Result | Status | Notes |
 |---|-----------|-------|-----------------|--------|-------|
-| 13.1 | eMAR overview | Navigate to `/emar` | Org-wide medication overview with active medications count | ☐ | |
-| 13.2 | Resident MAR grid | Click on a resident in eMAR | Monthly MAR grid (rows=meds, columns=dates) displayed | ☐ | |
-| 13.3 | Add medication | Add a new medication to resident | Medication appears in list and MAR grid | ☐ | |
-| 13.4 | Administer medication | Click cell on MAR grid → Mark as "Given" | Cell marked with checkmark/given indicator | ☐ | |
-| 13.5 | Record refusal | Mark medication as "Refused" | Cell shows refused indicator with reason | ☐ | |
-| 13.6 | Omit medication | Mark medication as "Omitted" | Cell shows omitted indicator with reason | ☐ | |
-| 13.7 | PRN medication | Administer a PRN med | Records indication given, triggers 1-hour follow-up prompt | ☐ | |
-| 13.8 | Controlled drug register | Access controlled drug section | Dual-signature requirement visible, running balance tracked | ☐ | |
-| 13.9 | Missed dose alerts | Leave scheduled medication unadministered past time | System shows missed dose alert/notification | ☐ | |
-| 13.10 | Monthly audit report | Generate medication audit | Auto-generated stats with PDF export option | ☐ | |
+| 13.1 | eMAR overview | Navigate to `/emar` | Org-wide view listing all residents with active medication counts, low-stock/CD alerts | ☐ | |
+| 13.2 | Resident MAR header | Click a resident → eMAR page | Header shows "Medication Administration Record (MAR)", resident name, DOB | ☐ | |
+| 13.3 | Weekly MAR grid | View MAR Chart tab | 7-day grid, each day column shows day (EEE) + date (d/M), today column highlighted blue | ☐ | |
+| 13.4 | MAR code legend | View MAR grid | Always-visible horizontal legend bar showing all UK codes: G=Given, R=Refused, S=Sleeping, etc. | ☐ | |
+| 13.5 | Week navigation | Click "Previous Week" / "Next Week" / "Today" buttons | Grid shifts week correctly; "Today" button returns to current week | ☐ | |
+| 13.6 | Multi-slot medications | Add a TDS (3×/day) medication | Three rows rendered for that medication — Morning, Lunchtime, Evening — medication name spans all rows with rowspan | ☐ | |
+| 13.7 | Administer given (G) | Click any cell today → select G → click Record | Cell turns green, shows carer's initials (e.g. "JD") instead of time | ☐ | |
+| 13.8 | Administer all slots | For TDS medication, administer all 3 slots | Each row's cell turns green independently; second and third slots must also record correctly | ☐ | |
+| 13.9 | Record refusal (R) | Click cell → select R → add reason → Record | Cell turns red with "R" + carer initials; reason saved | ☐ | |
+| 13.10 | Record other codes | Test S, P, M, H, D, N, L, Q, O codes | Correct colour/label per UK MAR code legend | ☐ | |
+| 13.11 | Past unadministered cells | View cells from previous days with no record | Cells show amber background with "-" | ☐ | |
+| 13.12 | Future cells | View cells for future dates | Cells show light green, disabled (cannot click) | ☐ | |
+| 13.13 | Stock column | View MAR grid | Rightmost "Stock" column shows current stock count per medication | ☐ | |
+| 13.14 | Stock decrements on administration | Administer a medication (G) | Stock count in grid AND medications page both decrease by 1 | ☐ | |
+| 13.15 | PRN administration | Click PRN cell → record reason + pain scores before/after → G | Recorded; PRN Administration Log section below grid shows new row | ☐ | |
+| 13.16 | PRN log columns | View PRN Administration Log | Shows Date, Time, Medication, Dose, Reason, Effectiveness (pain before→after), Given By | ☐ | |
+| 13.17 | PRN protocols page | Click "PRN Protocols" button (if PRN meds exist) | Lists all PRN meds with indication, minimum interval, and protocol notes | ☐ | |
+| 13.18 | Carer's Notes section | View bottom of MAR grid | Carer's Notes table with Date, Time, Notes, Signature columns (3 blank rows for manual entries) | ☐ | |
+| 13.19 | Add medication | Click "+ Add Medication" in UK Stock tab | Medication form with name search (UK autocomplete), dose, route, frequency, stock fields | ☐ | |
+| 13.20 | UK medicine autocomplete | Type first 3 letters of a UK drug name in search | Dropdown shows matching UK medicines from reference list | ☐ | |
+| 13.21 | Medications page | Click "Medications" button on eMAR header | Opens `/medications/[residentId]` with 4 stat cards and tab interface | ☐ | |
+| 13.22 | UK Stock tab | View UK Stock tab on medications page | Table: Medication (name + dose + CD badge) \| Status \| Quantity \| Batch \| Expiry \| Actions menu | ☐ | |
+| 13.23 | Prescriptions tab | Click Prescriptions tab | Active prescriptions with frequency, prescribed by, start date | ☐ | |
+| 13.24 | Alerts tab | Click Alerts tab | Low stock alert panel (amber) and expiring-soon panel (red); shows "No alerts" if all clear | ☐ | |
+| 13.25 | Controlled Drugs tab | Click Controlled Drugs tab | CD-only medications with CD2 badge | ☐ | |
+| 13.26 | Receive Stock dialog | Click ⋮ → Receive Stock on any medication | Dialog shows current stock, quantity input, calculated new total; saves correctly | ☐ | |
+| 13.27 | Controlled drug witness | Administer a CD medication (G) | Requires witness selection; creates entry in CD Register with "before" and "after" balance | ☐ | |
+| 13.28 | Missed dose alerts | Leave a scheduled medication unadministered past time | System shows missed dose alert/notification | ☐ | |
+| 13.29 | Monthly audit report | Navigate to Audit tab → Generate | Auto-generated stats with administered/refused/omitted counts | ☐ | |
 
 ---
 
@@ -333,19 +352,22 @@
 ## 16. Risk Analytics
 
 **Routes:** `/(dashboard)/risk-analytics`, `/(dashboard)/risk-analytics/[residentId]`  
-**Purpose:** Verify 4-domain risk scoring, AI recommendations, and manager dashboard.
+**Purpose:** Verify 4-domain risk scoring, AI recommendations, org-wide dashboard, and manual calculation trigger.
 
 | # | Test Case | Steps | Expected Result | Status | Notes |
 |---|-----------|-------|-----------------|--------|-------|
-| 16.1 | Risk analytics dashboard | Navigate to `/risk-analytics` | Org-wide view of all residents sorted by combined risk score | ☐ | |
-| 16.2 | Filter by risk domain | Filter by Fall / Pressure Ulcer / Medication / Safeguarding | Only selected domain risk scores displayed | ☐ | |
-| 16.3 | Individual risk detail | Click a resident | 4 risk score cards: Fall, Pressure Ulcer, Medication, Safeguarding | ☐ | |
-| 16.4 | Risk scoring accuracy | Verify score against known resident data | Score aligns with documented scoring rules (0–33=LOW, 34–66=MEDIUM, 67–100=HIGH) | ☐ | |
-| 16.5 | Trend comparison | View "vs. last week" indicator | Shows increase/decrease from previous calculation | ☐ | |
-| 16.6 | Risk factors list | View individual risk detail | Lists contributing factors for each domain score | ☐ | |
-| 16.7 | AI recommendations | View recommendations section | 3–5 plain-language suggestions per resident | ☐ | |
-| 16.8 | Quick actions | Use "Log Incident" or "Update Care Plan" from risk detail | Navigates to pre-filled incident/care plan form | ☐ | |
-| 16.9 | HIGH risk colour coding | View HIGH-risk resident | Red/critical visual indicators clearly distinguishable | ☐ | |
+| 16.1 | Risk analytics dashboard | Navigate to `/risk-analytics` | Org-wide table of all residents sorted by combined risk score; "No profiles yet" message if none calculated | ☐ | |
+| 16.2 | Calculate Risk Scores button | Click "Calculate Risk Scores" button | Spinner shows; all admitted residents calculated; summary shows "X residents calculated" | ☐ | |
+| 16.3 | Risk table displays | After calculation | Table shows resident name, Overall score, Falls, Pressure, Medication, Safeguarding, Last Updated | ☐ | |
+| 16.4 | HIGH risk alert banner | If any resident is HIGH or VERY HIGH | Red alert banner appears top-right showing count | ☐ | |
+| 16.5 | Individual risk detail | Click a resident row | Navigates to `/risk-analytics/[residentId]` — 4 score cards with colour-coded levels | ☐ | |
+| 16.6 | Risk score thresholds | Verify band labels | 0–33 = LOW (green), 34–66 = MEDIUM (amber), 67–100 = HIGH (orange), 85+ = VERY HIGH (red) | ☐ | |
+| 16.7 | Risk factors list | View individual risk detail | Lists each contributing factor with domain label and weight | ☐ | |
+| 16.8 | AI recommendations | View recommendations section | 3–5 plain-language, numbered recommendations; if OpenAI unavailable, shows rule-based summary instead | ☐ | |
+| 16.9 | Acknowledge risk | Click "Acknowledge" on a risk domain | Dialog requires reason text; logged in audit trail | ☐ | |
+| 16.10 | Quick actions | Use quick action buttons on risk detail | "Log Incident" / "Update Care Plan" buttons navigate to correct pre-filled forms | ☐ | |
+| 16.11 | HIGH risk colour coding | View HIGH-risk resident row | Row/badges clearly use red/orange visual indicators | ☐ | |
+| 16.12 | Risk recalculates on new data | Record a fall incident, then recalculate | Falls risk score increases | ☐ | |
 
 ---
 
