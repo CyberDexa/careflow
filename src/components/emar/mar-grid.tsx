@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { recordAdministration } from '@/actions/emar'
+import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, ClipboardList, User } from 'lucide-react'
 
 // ─── UK MAR Code definitions ─────────────────────────────────────────────────
@@ -208,21 +209,25 @@ export function MARGrid({ residentId, medications, administrations, staffList = 
     scheduledTime.setHours(slotConfig.hour, 0, 0, 0)
 
     startTransition(async () => {
-      await recordAdministration({
-        medicationId: selectedCell.medicationId,
-        residentId,
-        status: marCode === 'G' ? 'GIVEN' : marCode === 'R' ? 'REFUSED' : marCode === 'H' || marCode === 'D' ? 'NOT_AVAILABLE' : 'OMITTED',
-        scheduledTime: scheduledTime.toISOString(),
-        administeredAt: marCode === 'G' ? new Date().toISOString() : undefined,
-        outcome: notes || undefined,
-        witnessId: witnessId || undefined,
-        marCode,
-        roundSlot: selectedCell.roundSlot.toUpperCase() as any,
-        painScoreBefore: painBefore ? parseInt(painBefore) : undefined,
-        painScoreAfter: painAfter ? parseInt(painAfter) : undefined,
-      } as any)
-      setSelectedCell(null)
-      router.refresh()
+      try {
+        await recordAdministration({
+          medicationId: selectedCell.medicationId,
+          residentId,
+          status: marCode === 'G' ? 'GIVEN' : marCode === 'R' ? 'REFUSED' : marCode === 'H' || marCode === 'D' ? 'NOT_AVAILABLE' : 'OMITTED',
+          scheduledTime: scheduledTime.toISOString(),
+          administeredAt: marCode === 'G' ? new Date().toISOString() : undefined,
+          outcome: notes || undefined,
+          witnessId: witnessId || undefined,
+          marCode,
+          roundSlot: selectedCell.roundSlot.toUpperCase() as any,
+          painScoreBefore: painBefore ? parseInt(painBefore) : undefined,
+          painScoreAfter: painAfter ? parseInt(painAfter) : undefined,
+        } as any)
+        setSelectedCell(null)
+        router.refresh()
+      } catch (err: any) {
+        toast.error(err?.message ?? 'Failed to record administration')
+      }
     })
   }
 
@@ -300,7 +305,7 @@ export function MARGrid({ residentId, medications, administrations, staffList = 
               </tr>
             </thead>
             <tbody>
-              {medications.map(med => {
+              {medications.flatMap(med => {
                 const rounds: RoundSlotKey[] = med.isPRN ? ['prn'] : getRoundsForFrequency(med.frequency)
                 return rounds.map((slotKey, slotIdx) => {
                   const slot = ROUND_SLOTS.find(s => s.key === slotKey)!
